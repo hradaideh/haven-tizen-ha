@@ -82,7 +82,7 @@
     // dockApps: app IDs in dock order; null = never chosen, so YouTube and Internet are used.
     var DEFAULTS = { interval: 60, source: 'both', motion: false, season: 'auto', wxStyle: 'a', jfConvert: 'audio', jfMaxRes: 'auto', jfLibrary: 'show', theme: 'dark', clock24: true,
         icons: 'simple', captions: true, focus: 0, widgets: null, dockApps: null, screens: null, screensOff: null,
-        musDir: '', musDirName: '', musShuffle: false, musRepeat: 'all', senLoc: 'home', homeCams: true, homeCustom: true };
+        musDir: '', musDirName: '', musShuffle: false, musRepeat: 'all', senLoc: 'home', homeCams: true, homeCustom: true, controlsSeeded: false };
     var cfg = {};
     (function () {
         for (var k in DEFAULTS) { if (DEFAULTS.hasOwnProperty(k)) { cfg[k] = H.get(k, DEFAULTS[k]); } }
@@ -1510,7 +1510,7 @@
     // launch; after that HA pushes changes only for the entities on screen
     // (subscribe_entities with entity_ids), so the TV does almost no work.
 
-    var BUTTON_DOMAINS = { light: 1, 'switch': 1, input_boolean: 1, fan: 1, scene: 1, script: 1, button: 1, input_button: 1 };
+    var BUTTON_DOMAINS = { light: 1, 'switch': 1, input_boolean: 1, fan: 1, scene: 1, script: 1, button: 1, input_button: 1, climate: 1, water_heater: 1 };
 
     // Press-to-run entities on Controls: OK always runs them (never "off"), they're never shown as
     // on (a script while it runs aside, which is its real state), and their state line says when
@@ -1690,6 +1690,24 @@
             if (cfg.widgets === null) {
                 cfg.widgets = defaultPicks();
                 save('widgets');
+            }
+            if (!cfg.controlsSeeded) {
+                var seed = [
+                    'climate.e3_vitodens_100_bhc_0122_heating',
+                    'water_heater.e3_vitodens_100_bhc_0122_domestic_hot_water',
+                    'switch.wifi_smart_meter_switch',
+                    'switch.master_room_curtains_switch_1',
+                    'switch.master_room_curtains_switch_2',
+                    'switch.master_room_curtains_switch_3',
+                    'scene.unlock'
+                ];
+                var added = false;
+                each(seed, function (eid) {
+                    if (ha.states[eid] && cfg.widgets.indexOf(eid) < 0) { cfg.widgets.push(eid); added = true; }
+                });
+                cfg.controlsSeeded = true;
+                save('controlsSeeded');
+                if (added) { save('widgets'); }
             }
             haSubscribe();
             renderWidgets();
@@ -1897,6 +1915,7 @@
 
     function isOn(eid) {
         var st = ha.states[eid];
+        if (domainOf(eid) === 'climate') { return !!st && st.state !== 'off' && st.state !== 'unavailable' && st.state !== 'unknown'; }
         return !!st && st.state === 'on';
     }
 
@@ -2518,7 +2537,7 @@
     function ctlIcon(eid) {
         var d = domainOf(eid);
         if (RUN_DOMAINS[d]) { return RUN_DOMAINS[d].glyph; }
-        return d === 'light' ? 'bulb' : d === 'fan' ? 'fan' : 'power';
+        return d === 'light' ? 'bulb' : d === 'fan' ? 'fan' : d === 'climate' ? 'flame' : d === 'water_heater' ? 'drop' : 'power';
     }
 
     // When a scene, script or button last ran: "20:15" today, "27 Oct" before; '' if never or unreadable.
@@ -2543,6 +2562,14 @@
         if (!st) { return '–'; }
         if (runOf(eid)) { return runState(eid); }
         if (st.state === 'unavailable' || st.state === 'unknown') { return 'Unavailable'; }
+        var a = st.attributes || {};
+        if (domainOf(eid) === 'climate') {
+            return st.state === 'off' ? 'Off' : cap(String(a.hvac_action || st.state).replace(/_/g, ' '));
+        }
+        if (domainOf(eid) === 'water_heater') {
+            var wt = a.current_temperature !== undefined && a.current_temperature !== null ? a.current_temperature : a.temperature;
+            return (st.state === 'off' ? 'Off' : 'On') + (typeof wt === 'number' ? ' · ' + Math.round(tempC(wt, a.temperature_unit)) + '°' : '');
+        }
         if (st.state === 'on') { return isDimmable(eid) ? 'On · ' + brightnessPct(eid) + '%' : 'On'; }
         if (st.state === 'off') { return 'Off'; }
         return cap(st.state);
@@ -5415,7 +5442,10 @@
         var was = st.state, turnOn = was !== 'on';
         st.state = turnOn ? 'on' : 'off';          // optimistic; HA pushes the real state
         renderWidgets();
-        haSend('call_service', { domain: domainOf(eid), service: turnOn ? 'turn_on' : 'turn_off', target: { entity_id: eid } },
+        var svc = domainOf(eid) === 'climate'
+            ? { domain: 'climate', service: 'set_hvac_mode', service_data: { hvac_mode: turnOn ? 'auto' : 'off' }, target: { entity_id: eid } }
+            : { domain: domainOf(eid), service: turnOn ? 'turn_on' : 'turn_off', target: { entity_id: eid } };
+        haSend('call_service', svc,
             function (ok, r, err) {
                 if (ok) { return; }
                 st.state = was;
