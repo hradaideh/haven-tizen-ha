@@ -697,12 +697,53 @@ Edit `ha/www/haven/design/*` and watch it update. Add `&ha=http://<HA-IP>:8123&t
 to try the widgets against a real Home Assistant. That may need `cors_allowed_origins`
 under `http:` in HA; the TV app itself isn't limited by this.
 
+## Native Home build (`app-native/`)
+
+A second way to install Haven, for Samsung TVs where [AeroTizen](https://github.com/helalaou/AeroTizen)'s
+Native Home already works: Haven takes over the Home button and a remote colour key
+(Blue, by default) opens Samsung's own Home screen without the launcher bouncing back.
+
+This only changes which app owns the TV's Home button; Haven's screens, Settings and
+Home Assistant connection are unchanged from the regular `app/` build.
+
+How it works: `app-native/` holds just the three files that differ from `app/`:
+
+- `config.xml` — installs Haven under AeroTizen's own app identity (`DclHome001.Home`)
+  instead of Haven's (`HavenHome1.Haven`), and declares the background service below.
+- `service/` — AeroTizen's watcher service, copied unmodified from its
+  [launcher-v3.1.0 release](https://github.com/helalaou/AeroTizen/releases/tag/launcher-v3.1.0).
+  It's what the `aerotizen` CLI's `home apply`/`home restore` commands talk to; Haven
+  doesn't need to know about it.
+- `THIRD-PARTY-NOTICES.md` — attribution for the reused files (both projects are MIT).
+
+To build and install it:
+
+1. Follow steps 1 and 3 of [Setup](#setup) as usual (shell-config.js, optional HA files).
+2. Assemble the app: copy everything from `app/` into `app-native/`, *without* overwriting
+   `app-native/config.xml`, `app-native/service/` or `app-native/THIRD-PARTY-NOTICES.md`.
+   For example: `rsync -a --exclude config.xml --exclude service --exclude THIRD-PARTY-NOTICES.md app/ app-native/`
+3. Install with the [AeroTizen CLI](https://github.com/helalaou/AeroTizen) (Developer Mode
+   and its signing certs already set up for the TV): `aerotizen --tv <TV-IP> install ./app-native`.
+   If AeroTizen's own launcher is currently installed, this replaces it in place — both use
+   the same app ID, so Haven becomes Home instead of AeroTizen.
+4. Apply Native Home: `aerotizen --tv <TV-IP> home backup` then `home apply --yes`. Reverse
+   it any time with `home restore --yes`; nothing about this build is one-way.
+
+Credit: AeroTizen is by [Hamza El Alaoui](https://github.com/helalaou), MIT-licensed.
+Only its already-built, unmodified service and app identity are reused here — see
+`app-native/THIRD-PARTY-NOTICES.md`.
+
 ## Undo
 
 Uninstall Haven from Apps on the TV and turn Developer Mode off. On Home Assistant, delete
 `/config/www/haven`, `/config/haven`, `/config/packages/haven.yaml` and the power-on
-automation, then revoke the token.
+automation, then revoke the token. For `app-native/`, also run `aerotizen home restore --yes`
+first to give the Home button back to Samsung.
 
 ## Credits
 
 Built by [natureglass](https://github.com/natureglass) together with Claude (Anthropic).
+This fork ([hradaideh](https://github.com/hradaideh)) adds camera tiles and HA-style
+history graphs on Home, a two-row dock (cameras / apps + HDMI), and the `app-native/`
+Native Home build that reuses [AeroTizen](https://github.com/helalaou/AeroTizen)'s
+app identity and watcher service, credited above.

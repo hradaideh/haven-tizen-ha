@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<widget xmlns="http://www.w3.org/ns/widgets"
+        xmlns:tizen="http://tizen.org/ns/widgets"
+        id="http://haven.home/tv-native"
+        version="1.0.0"
+        viewmodes="maximized">
+    <!-- App identity is AeroTizen's (MIT, https://github.com/helalaou/AeroTizen) so the
+         watcher service below and `aerotizen home apply` recognize this app as eligible
+         for Native Home. Only the identity and the service/ folder are AeroTizen's;
+         everything the screen shows (index.html, shell/, design/) is Haven's own. -->
+    <tizen:application id="DclHome001.Home" package="DclHome001" required_version="2.4"/>
+    <tizen:profile name="tv-samsung"/>
+    <name>Haven</name>
+    <description>Home Assistant home screen (Haven), installed under AeroTizen's app identity for Native Home.</description>
+    <author>Alex, Hamza El Alaoui</author>
+    <content src="index.html"/>
+    <icon src="icon.png"/>
+
+    <feature name="http://tizen.org/feature/screen.size.all"/>
+
+    <tizen:service id="DclHome001.Watcher" on-boot="true" auto-restart="true">
+        <tizen:content src="service/index.js"/>
+        <tizen:name>HomeWatcher</tizen:name>
+        <tizen:description>Returns to the launcher when Home is pressed inside an app</tizen:description>
+    </tizen:service>
+
+    <!-- Load the design and wallpapers from Home Assistant on the local network.
+         "*" so a new HA address only needs a change in Settings, not a reinstall. -->
+    <access origin="*" subdomains="true"/>
+    <tizen:privilege name="http://tizen.org/privilege/internet"/>
+    <tizen:privilege name="http://tizen.org/privilege/filesystem.read"/>
+    <tizen:privilege name="http://tizen.org/privilege/filesystem.write"/>
+    <!-- List installed apps (to find YouTube and the browser) and open them -->
+    <tizen:privilege name="http://tizen.org/privilege/application.info"/>
+    <tizen:privilege name="http://tizen.org/privilege/application.launch"/>
+    <!-- Colour keys on the remote (red = safe mode at startup, blue = Samsung Home, yellow = app list) -->
+    <tizen:privilege name="http://tizen.org/privilege/tv.inputdevice"/>
+    <!-- Switch HDMI sources (the PS5 tile) and native Home/viewer handoff -->
+    <tizen:privilege name="http://tizen.org/privilege/tv.window"/>
+
+    <tizen:setting screen-orientation="landscape"
+                   context-menu="disable"
+                   background-support="enable"
+                   encryption="disable"
+                   install-location="auto"
+                   hwkey-event="enable"/>
+</widget>

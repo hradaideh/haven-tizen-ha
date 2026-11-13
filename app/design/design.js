@@ -18,11 +18,15 @@
     // usual ID differs on your TV. Press Yellow on the TV to see installed apps and their IDs.
     var APPS = {
         youtube: { name: 'YouTube', ids: ['9Ur5IzDKqV.TizenYouTube'], match: /youtube/i, glyph: 'play' },
+        hdmi: { name: 'PS5', ids: [], match: /^$/, glyph: 'hdmi', hdmi: true },
         internet: { name: 'Internet', ids: ['org.tizen.browser', 'com.samsung.tv.browser'], match: /^(internet|web ?browser|browser)$/i, glyph: 'globe' }
     };
     var SELF_ID = /^HavenHome1\./;          // never offer Haven itself in the app picker
 
     var GLYPHS = {
+        hdmi: '<svg class="glyph" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="6" stroke-linejoin="round"><path d="M18 34 H82 V54 L72 68 H28 L18 54 Z"/><path d="M34 46 H66 M34 56 H66" stroke-linecap="round"/></svg>',
+        flame: '<svg class="glyph" viewBox="0 0 100 100" fill="currentColor"><path d="M52 8 C56 26 74 36 74 58 C74 76 63 90 50 90 C36 90 26 78 26 62 C26 52 31 45 37 39 C37 48 41 52 45 52 C45 36 46 22 52 8 Z"/></svg>',
+        drop: '<svg class="glyph" viewBox="0 0 100 100" fill="currentColor"><path d="M50 10 C62 28 76 44 76 61 C76 77 65 90 50 90 C35 90 24 77 24 61 C24 44 38 28 50 10 Z"/></svg>',
         play: '<svg class="glyph" viewBox="0 0 100 100"><path d="M38 28 L74 50 L38 72 Z" fill="currentColor" stroke="currentColor" stroke-width="6" stroke-linejoin="round"/></svg>',
         globe: '<svg class="glyph" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="5"><circle cx="50" cy="50" r="30"/><ellipse cx="50" cy="50" rx="13" ry="30"/><path d="M20 50 H80 M25 35 H75 M25 65 H75"/></svg>',
         gear: '<svg class="glyph" viewBox="0 0 100 100"><path fill="currentColor" fill-rule="evenodd" stroke="currentColor" stroke-width="3" stroke-linejoin="round" d="M43.7 23.7 L44.4 14.4 L55.6 14.4 L56.3 23.7 L64.1 27.0 L71.2 20.9 L79.1 28.8 L73.0 35.9 L76.3 43.7 L85.6 44.4 L85.6 55.6 L76.3 56.3 L73.0 64.1 L79.1 71.2 L71.2 79.1 L64.1 73.0 L56.3 76.3 L55.6 85.6 L44.4 85.6 L43.7 76.3 L35.9 73.0 L28.8 79.1 L20.9 71.2 L27.0 64.1 L23.7 56.3 L14.4 55.6 L14.4 44.4 L23.7 43.7 L27.0 35.9 L20.9 28.8 L28.8 20.9 L35.9 27.0 Z M39 50 A11 11 0 1 0 61 50 A11 11 0 1 0 39 50 Z"/></svg>',
@@ -39,7 +43,7 @@
 
     var KEY = {
         LEFT: 37, UP: 38, RIGHT: 39, DOWN: 40, ENTER: 13,
-        BACK: 10009, YELLOW: 405, IME_DONE: 65376, IME_CANCEL: 65385,
+        BACK: 10009, YELLOW: 405, BLUE: 406, IME_DONE: 65376, IME_CANCEL: 65385,
         ESC: 27, BACKSPACE: 8, Y: 89, EXIT: 10182,
         CH_UP: 427, CH_DOWN: 428, PAGE_UP: 33, PAGE_DOWN: 34,  // CH +/- on the remote; Page Up/Down in preview
         PLAY: 415, PAUSE: 19, PLAYPAUSE: 10252, STOP: 413, FF: 417, RW: 412, SPACE: 32   // media keys; Space in preview
@@ -63,6 +67,8 @@
         { key: 'captions', label: 'Wallpaper names', options: [[true, 'Show'], [false, 'Hide']] },
         { key: '_screens', label: 'Screens', action: 'screens' },
         { key: '_apps', label: 'Apps in the dock', action: 'apps' },
+        { key: 'homeCams', label: 'Cameras on Home', options: [[true, 'Show'], [false, 'Hide']] },
+        { key: 'homeCustom', label: 'Home cards', options: [[true, 'Heating, hot water, cost'], [false, 'Picked sensors']] },
         { key: '_widgets', label: 'Home Assistant widgets', action: 'widgets' },
         { key: 'senLoc', label: 'Sensors location', options: [['home', 'Home'], ['controls', 'Controls']] },
         { key: '_jellyfin', label: 'Jellyfin', action: 'jellyfin' },
@@ -76,7 +82,7 @@
     // dockApps: app IDs in dock order; null = never chosen, so YouTube and Internet are used.
     var DEFAULTS = { interval: 60, source: 'both', motion: false, season: 'auto', wxStyle: 'a', jfConvert: 'audio', jfMaxRes: 'auto', jfLibrary: 'show', theme: 'dark', clock24: true,
         icons: 'simple', captions: true, focus: 0, widgets: null, dockApps: null, screens: null, screensOff: null,
-        musDir: '', musDirName: '', musShuffle: false, musRepeat: 'all', senLoc: 'home' };
+        musDir: '', musDirName: '', musShuffle: false, musRepeat: 'all', senLoc: 'home', homeCams: true, homeCustom: true };
     var cfg = {};
     (function () {
         for (var k in DEFAULTS) { if (DEFAULTS.hasOwnProperty(k)) { cfg[k] = H.get(k, DEFAULTS[k]); } }
@@ -127,7 +133,7 @@
             '<div id="pages">' +
                 '<section class="page" id="pageHome">' +
                     '<section id="senBox" hidden><div id="sensors"></div></section><div id="senBar"><b></b></div>' +
-                    '<nav id="dock"><div id="dockTrack"></div></nav>' +
+                    '<nav id="dock"><div id="dockCams"></div><div id="dockTrack"></div></nav>' +
                     '<div id="dockMoreL" class="dockMore">&lsaquo;</div><div id="dockMoreR" class="dockMore">&rsaquo;</div>' +
                     '<div id="caption"></div>' +
                 '</section>' +
@@ -1816,7 +1822,7 @@
         }
         if (ev.r) { each(ev.r, function (gone) { delete ha.states[gone]; }); }
         renderWidgets();
-        if (ev.a && selectedOf('camera').length) { refreshCamStills(); }
+        if (ev.a && selectedOf('camera').length) { refreshCamStills(); refreshHomeCams(); }
         if (cfg.season !== 'off') { updateFx(); }
         if (cfg.theme === 'auto') { applyTheme(); }
         saveCacheSoon();
@@ -1847,7 +1853,7 @@
         var s = st.state, a = st.attributes || {}, d = domainOf(eid), u, n;
         if (s === 'unavailable' || s === 'unknown') { return { value: '–', unit: '', note: '', dim: true }; }
         if (d === 'weather') {
-            return { value: a.temperature !== undefined ? num(+a.temperature, '°') : '', unit: '°',
+            return { value: a.temperature !== undefined ? num(a.temperature_unit === '°F' ? (+a.temperature - 32) * 5 / 9 : +a.temperature, '°') : '', unit: '°',
                 note: WEATHER[s] || cap(s.replace(/-/g, ' ')) };
         }
         if (d === 'climate') {
@@ -1866,7 +1872,8 @@
         if (isNaN(n) || !/^-?[\d.]+(e[-+]?\d+)?$/i.test(s)) { return { value: cap(s), unit: '', note: '', text: true }; }
         if (u === 'W' && Math.abs(n) >= 1000) { n = n / 1000; u = 'kW'; }
         if (u === 'Wh' && Math.abs(n) >= 1000) { n = n / 1000; u = 'kWh'; }
-        if (u === '°C' || u === '°F') { return { value: num(n, u), unit: '°', note: '' }; }
+        if (u === '°F') { n = (n - 32) * 5 / 9; u = '°C'; }
+        if (u === '°C') { return { value: num(n, u), unit: '°', note: '' }; }
         return { value: num(n, u), unit: u, note: '' };
     }
 
@@ -1999,7 +2006,7 @@
         }, 450);
         renderChrome();
         renderWidgets();
-        refreshCamStills();
+        refreshCamStills(); refreshHomeCams();
         updateFx();
         if (p === P_LIB) { libLoad(false); }
         if (p === P_MUS) { musLoad(false); }
@@ -2042,7 +2049,7 @@
 
     // Can Down / OK from the toolbar land on something on this page?
     function pageCanFocus(p) {
-        if (p === P_HOME) { return dockApps().length > 0 || sensorsFocusable(); }
+        if (p === P_HOME) { return dockCount() > 0 || sensorsFocusable(); }
         if (p === P_LIB) { return !!lib.loadedAt; }
         if (p === P_MUS) { return musHasFocus(); }
         return itemsOf(p).length > 0;
@@ -2053,7 +2060,7 @@
         if (!pageCanFocus(p)) { return; }
         tabFocus = null;
         if (p === P_HOME) {
-            if (sel[0] === 'dock' && !dockApps().length) { sel[0] = 'dock'; senEnter(); return; }
+            if (sel[0] === 'dock' && !dockCount()) { sel[0] = 'dock'; senEnter(); return; }
             if (String(sel[0]).indexOf('sen:') === 0 && !itemByKey(0, sel[0])) { sel[0] = 'dock'; }
         } else if (p === P_LIB) {
             sel[p] = 'lib';
@@ -2172,7 +2179,7 @@
         if (best) { sel[page] = best.key; applyFocus(); }
         else if (dx) { toEdge(dx > 0 ? 'r' : 'l'); }
         else if (dy < 0) { toTabs(); }                                  // top row: up to the toolbar
-        else if (page === P_HOME && dockApps().length) { sel[0] = 'dock'; applyFocus(); }   // sensors: down to the dock
+        else if (page === P_HOME && dockCount()) { sel[0] = 'dock'; applyFocus(); }   // sensors: down to the dock
     }
 
     // Keys while the pages are showing (no panel open). Returns false if not used.
@@ -2204,9 +2211,14 @@
             return true;
         }
         if (page === 0) {
-            if (k === KEY.LEFT) { if (focus > 0) { focus--; renderDock(); } else { toEdge('l'); } }   // a screen before Home, if you moved it
-            else if (k === KEY.RIGHT) { if (focus < tiles.length - 1) { focus++; renderDock(); } else { toEdge('r'); } }
-            else if (k === KEY.UP) { if (sensorsFocusable()) { senEnter(); } else { toTabs(); } }
+            var inCams = isCamTile(tiles[focus]);
+            if (k === KEY.LEFT) { if (focus > 0 && isCamTile(tiles[focus - 1]) === inCams) { focus--; renderDock(); } else { toEdge('l'); } }   // a screen before Home, if you moved it
+            else if (k === KEY.RIGHT) { if (focus < tiles.length - 1 && isCamTile(tiles[focus + 1]) === inCams) { focus++; renderDock(); } else { toEdge('r'); } }
+            else if (k === KEY.UP) {
+                if (!inCams && camCount()) { focus = dockNearest(true, focus); renderDock(); }
+                else if (sensorsFocusable()) { senEnter(); } else { toTabs(); }
+            }
+            else if (k === KEY.DOWN) { if (inCams) { focus = dockNearest(false, focus); renderDock(); } else { return false; } }
             else if (k === KEY.ENTER) { activateTile(tiles[focus]); }
             else if (isBack(k)) { showPage(startPage()); }     // as the first screen, Back does nothing; Home and Exit still work
             else { return false; }
@@ -2254,19 +2266,19 @@
     // Home: up to 30 sensor cards, six to a row. Without apps in the dock they fill the screen
     // (five rows, no scrolling); with the dock, three rows show and the rest scroll: Up from the
     // dock moves into the cards, and a bar at the side shows where you are.
-    var SEN_COLS = 6, SEN_ROW_H = 150, homeHtml = '', senTop = 0;
+    var SEN_COLS = 8, SEN_ROW_H = 122, homeHtml = '', senTop = 0;
 
     // Sensors are on Home unless Settings > Sensors location puts them on Controls.
     function homeSensors() { return cfg.senLoc === 'controls' ? [] : selectedOf('sensor').slice(0, MAX_SENSORS); }
     function ctlSensors() { return cfg.senLoc === 'controls' ? selectedOf('sensor').slice(0, MAX_SENSORS) : []; }
     function sensorRows() { return Math.ceil(homeSensors().length / SEN_COLS); }
-    function sensorRowsVisible() { return dockApps().length ? 3 : 5; }
+    function sensorRowsVisible() { return dockCount() ? 3 : 5; }
     function sensorsFocusable() { return !$('senBox').hidden && sensorRows() > sensorRowsVisible(); }
 
     function homeHasFocus() {
         var s = sel[0] || '';
         if (s.indexOf('sen:') === 0) { return sensorsFocusable() && !!itemByKey(0, s); }
-        if (s === 'dock') { return dockApps().length > 0; }
+        if (s === 'dock') { return dockCount() > 0; }
         return s.indexOf('edge:') === 0;
     }
 
@@ -2294,20 +2306,195 @@
         }
         senTop = Math.max(0, Math.min(maxTop, senTop));
         track.style.transform = 'translate3d(0,' + (-senTop * SEN_ROW_H) + 'px,0)';
-        var c = (dockApps().length ? 'withdock' : 'nodock') + (/stale/.test(box.className) ? ' stale' : '') +
+        var c = (dockCount() ? 'withdock' : 'nodock') + (/stale/.test(box.className) ? ' stale' : '') +
             (senTop > 0 ? ' fade-t' : '') + (senTop < maxTop ? ' fade-b' : '');
         if (box.className !== c) { box.className = c; }
         var bar = $('senBar');
-        bar.className = (maxTop > 0 && !box.hidden ? 'show ' : '') + (dockApps().length ? 'withdock' : 'nodock');
+        bar.className = (maxTop > 0 && !box.hidden ? 'show ' : '') + (dockCount() ? 'withdock' : 'nodock');
         if (maxTop > 0) {
-            var h = dockApps().length ? 340 : 732;
+            var h = dockCount() ? 340 : 732;
             bar.firstChild.style.height = Math.round(h * vis / rows) + 'px';
             bar.firstChild.style.transform = 'translate3d(0,' + Math.round(h * senTop / rows) + 'px,0)';
         }
     }
 
+    // Home cards: HA-style history charts (step lines, legend with current values, daily cost bars)
+    // beside heating / hot-water status and cost. Four grid rows: 2 for the top charts, 2 for the cost charts.
+    var E3 = 'sensor.e3_vitodens_100_bhc_0122_';
+    var HOME_CARDS = [
+        { t: 'line', name: 'Temperatures (°C)', span: 4, hours: 6, dec: 1, unit: '°C', series: [
+            { eid: E3 + 'supply_temperature', label: 'Heating circuit flow', color: '#4d6fd6' },
+            { eid: E3 + 'boiler_supply_temperature', label: 'Boiler flow', color: '#f2b84b' },
+            { eid: E3 + 'dhw_storage_temperature', label: 'Hot water tank', color: '#ff6b57' },
+            { eid: E3 + 'dhw_out_temperature', label: 'Hot water outlet', color: '#5cc9ac' } ] },
+        { t: 'line', name: 'Power (kW)', span: 2, hours: 24, dec: 2, unit: 'kW', series: [
+            { eid: 'sensor.wifi_smart_meter_phase_a_power', label: 'Power', color: '#5fd38d' } ] },
+        { t: 'status', eid: 'climate.e3_vitodens_100_bhc_0122_heating', name: 'Heating', icon: 'flame', color: '#ff8a3d' },
+        { t: 'status', eid: 'water_heater.e3_vitodens_100_bhc_0122_domestic_hot_water', name: 'Hot water', icon: 'drop', color: '#4aa8ff' },
+        { t: 'val', eid: 'sensor.total_cost_today', name: 'Cost today', unit: 'JD', dec: 2 },
+        { t: 'val', eid: 'sensor.total_cost_this_month', name: 'Cost this month', unit: 'JD', dec: 2 },
+        { t: 'bars', name: 'Daily cost (JD)', span: 4, days: 14, dec: 2, unit: 'JD', series: [
+            { eid: 'sensor.gas_cost_today', label: 'Gas', color: '#f2b84b' },
+            { eid: 'sensor.electricity_cost_today', label: 'Electricity', color: '#4aa8ff' } ] },
+        { t: 'line', name: 'Cost this month (JD)', span: 4, hours: 720, dec: 2, unit: 'JD', series: [
+            { eid: 'sensor.total_cost_this_month', label: 'Month to date', color: '#c792ea' } ] }
+    ];
+    var hist = { data: {}, at: {} };
+
+    function homeCards() { return cfg.homeCustom === false || cfg.senLoc === 'controls' ? [] : HOME_CARDS; }
+    function tempC(n, u) { return u === '°F' ? (n - 32) * 5 / 9 : n; }
+    function cardW(c) { return c.span * 198 + (c.span - 1) * 16 - 28; }
+    var MON3 = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    // Round axis ticks (about 5) covering lo..hi.
+    function niceTicks(lo, hi) {
+        if (hi - lo < 1e-9) { lo -= 1; hi += 1; }
+        var raw = (hi - lo) / 4, mag = Math.pow(10, Math.floor(Math.log(raw) / Math.LN10)), f = raw / mag;
+        var step = (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * mag, out = [], v = Math.floor(lo / step + 1e-9) * step;
+        for (; v < hi + step * 0.999; v += step) { out.push(Math.round(v / step) * step); }
+        return out;
+    }
+
+    function axisFmt(v, step) { return Math.abs(step) >= 1 ? String(Math.round(v)) : v.toFixed(step >= 0.1 ? 1 : 2); }
+
+    function chartFrame(W, H, ticks, unit, fmt) {
+        var L = 46, R = 8, T = 16, B = 22, lo = ticks[0], hi = ticks[ticks.length - 1];
+        var f = { L: L, R: R, T: T, B: B, W: W, H: H, pw: W - L - R, ph: H - T - B, lo: lo, hi: hi, svg: '' };
+        f.y = function (v) { return T + f.ph - (v - lo) / (hi - lo) * f.ph; };
+        f.svg = '<svg class="chart" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '">' +
+            '<text x="' + (L - 6) + '" y="10" text-anchor="end" font-size="12" fill="currentColor" fill-opacity="0.6">' + esc(unit) + '</text>';
+        each(ticks, function (v) {
+            f.svg += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + f.y(v).toFixed(1) + '" y2="' + f.y(v).toFixed(1) + '" stroke="currentColor" stroke-opacity="0.16"/>' +
+                '<text x="' + (L - 6) + '" y="' + (f.y(v) + 4).toFixed(1) + '" text-anchor="end" font-size="12" fill="currentColor" fill-opacity="0.65">' + fmt(v) + '</text>';
+        });
+        return f;
+    }
+
+    function lineSvg(c, d, H) {
+        var W = cardW(c), all = [], k;
+        each(d.series, function (pts) { each(pts, function (q) { all.push(q.v); }); });
+        if (all.length < 2) { return ''; }
+        var ticks = niceTicks(Math.min.apply(null, all), Math.max.apply(null, all)), step = ticks.length > 1 ? ticks[1] - ticks[0] : 1;
+        var f = chartFrame(W, H, ticks, c.unit, function (v) { return axisFmt(v, step); });
+        var span = d.t1 - d.t0, x = function (t) { return f.L + (t - d.t0) / span * f.pw; };
+        // vertical grid + time labels: every hour up to 8 h, every 4 h up to a day, then daily
+        var tickMs = c.hours <= 8 ? 3600000 : c.hours <= 24 ? 14400000 : 86400000 * (c.hours > 360 ? 5 : 1), t = new Date(d.t0);
+        if (tickMs >= 86400000) { t.setHours(0, 0, 0, 0); } else { t.setMinutes(0, 0, 0); }
+        for (var tt = t.getTime(); tt <= d.t1; tt += tickMs) {
+            if (tt < d.t0) { continue; }
+            var dd = new Date(tt);
+            f.svg += '<line x1="' + x(tt).toFixed(1) + '" x2="' + x(tt).toFixed(1) + '" y1="' + f.T + '" y2="' + (f.T + f.ph) + '" stroke="currentColor" stroke-opacity="0.1"/>' +
+                '<text x="' + x(tt).toFixed(1) + '" y="' + (H - 5) + '" text-anchor="middle" font-size="12" fill="currentColor" fill-opacity="0.65">' +
+                (tickMs >= 86400000 ? dd.getDate() + ' ' + MON3[dd.getMonth()] : hhmm(dd)) + '</text>';
+        }
+        each(d.series, function (pts, i) {
+            if (!pts.length) { return; }
+            var col = c.series[i].color, path = 'M' + x(pts[0].t).toFixed(1) + ',' + f.y(pts[0].v).toFixed(1);
+            for (k = 1; k < pts.length; k++) { path += ' H' + x(pts[k].t).toFixed(1) + ' V' + f.y(pts[k].v).toFixed(1); }
+            path += ' H' + x(d.t1).toFixed(1);
+            if (d.series.length === 1) {
+                var id = 'g' + c.name.replace(/[^a-z0-9]/gi, '');
+                f.svg += '<defs><linearGradient id="' + id + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + col + '" stop-opacity="0.4"/>' +
+                    '<stop offset="1" stop-color="' + col + '" stop-opacity="0.02"/></linearGradient></defs>' +
+                    '<path d="' + path + ' V' + (f.T + f.ph) + ' H' + x(pts[0].t).toFixed(1) + ' Z" fill="url(#' + id + ')"/>';
+            }
+            f.svg += '<path d="' + path + '" fill="none" stroke="' + col + '" stroke-width="2.2" stroke-linejoin="round"/>';
+        });
+        return f.svg + '</svg>';
+    }
+
+    // Per-day maximum of a "today" counter, stacked.
+    function barsSvg(c, d, H) {
+        var W = cardW(c), n = c.days, day0 = new Date(d.t1), k, sums = [], per = [], max = 0;
+        day0.setHours(0, 0, 0, 0);
+        var start = day0.getTime() - (n - 1) * 86400000;
+        each(d.series, function (pts, i) {
+            per[i] = [];
+            for (k = 0; k < n; k++) { per[i][k] = 0; }
+            each(pts, function (q) { var di = Math.floor((q.t - start + 3600000 * 0) / 86400000); if (di >= 0 && di < n && q.v > per[i][di]) { per[i][di] = q.v; } });
+        });
+        for (k = 0; k < n; k++) { var sum = 0; each(per, function (a) { sum += a[k]; }); sums[k] = sum; if (sum > max) { max = sum; } }
+        var ticks = niceTicks(0, max || 1), step = ticks.length > 1 ? ticks[1] - ticks[0] : 1;
+        var f = chartFrame(W, H, ticks, c.unit, function (v) { return axisFmt(v, step); });
+        var slot = f.pw / n, bw = slot * 0.62;
+        for (k = 0; k < n; k++) {
+            var acc = 0, bx = f.L + k * slot + (slot - bw) / 2, dd = new Date(start + k * 86400000 + 43200000);
+            each(per, function (a, i) {
+                if (a[k] <= 0) { return; }
+                var y1 = f.y(acc + a[k]), y0 = f.y(acc);
+                f.svg += '<rect x="' + bx.toFixed(1) + '" y="' + y1.toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + Math.max(1, y0 - y1).toFixed(1) + '" fill="' + c.series[i].color + '"/>';
+                acc += a[k];
+            });
+            f.svg += '<text x="' + (bx + bw / 2).toFixed(1) + '" y="' + (H - 5) + '" text-anchor="middle" font-size="12" fill="currentColor" fill-opacity="' + (k === n - 1 ? '1' : '0.65') + '">' + dd.getDate() + '</text>';
+        }
+        return f.svg + '</svg>';
+    }
+
+    function loadHistory(c) {
+        var key = c.name, now = Date.now();
+        if (hist.at[key] && now - hist.at[key] < (c.t === 'bars' || c.hours >= 168 ? 60000 : 5000)) { return; }
+        hist.at[key] = now;
+        var win = (c.t === 'bars' ? c.days * 24 : c.hours) * 3600000, ids = [];
+        each(c.series, function (sr) { ids.push(sr.eid); });
+        haSend('history/history_during_period', { start_time: new Date(now - win).toISOString(), end_time: new Date(now).toISOString(),
+            entity_ids: ids, minimal_response: true, no_attributes: true, significant_changes_only: false }, function (ok, res) {
+            if (!ok || !res) { hist.at[key] = 0; return; }
+            var out = [];
+            each(c.series, function (sr) {
+                var st = ha.states[sr.eid], u = st && st.attributes && st.attributes.unit_of_measurement, pts = [];
+                each(res[sr.eid] || [], function (r) {
+                    var v = parseFloat(r.s !== undefined ? r.s : r.state), t = (r.lu || r.last_updated) * 1000;
+                    if (!isNaN(v)) { pts.push({ t: Math.max(t, now - win), v: tempC(v, u) }); }
+                });
+                out.push(pts);
+            });
+            var sg = '', old = hist.data[key];
+            each(out, function (pts) { var l = pts[pts.length - 1]; sg += pts.length + ':' + (l ? l.v : '') + ';'; });
+            hist.data[key] = { series: out, t0: now - win, t1: now, sig: sg };
+            if (old && old.sig === sg && Math.abs(old.t1 - now) < 600000) { return; }
+            homeHtml = '';
+            renderHome(!ha.connected);
+        });
+    }
+
+    function legendHtml(c) {
+        var h = '<div class="legend">';
+        each(c.series, function (sr) {
+            var st = ha.states[sr.eid], u = st && st.attributes && st.attributes.unit_of_measurement, v = st ? parseFloat(st.state) : NaN;
+            h += '<span><i style="background:' + sr.color + '"></i>' + esc(sr.label) + (isNaN(v) ? '' : '<b>' + tempC(v, u).toFixed(c.dec) + ' ' + esc(c.unit) + '</b>') + '</span>';
+        });
+        return h + '</div>';
+    }
+
+    function cardHtml(c) {
+        var st = ha.states[c.eid], a = (st && st.attributes) || {}, dead = !st || st.state === 'unavailable' || st.state === 'unknown';
+        if (c.t === 'line' || c.t === 'bars') {
+            loadHistory(c);
+            var d = hist.data[c.name], multi = c.series.length > 1 || c.t === 'bars', H = multi ? 146 : 168;
+            var chart = d ? (c.t === 'bars' ? barsSvg(c, d, H) : lineSvg(c, d, H)) : '';
+            var head = '<div class="gh"><span class="gn">' + esc(c.name) + '</span>';
+            if (!multi) {
+                var s0 = ha.states[c.series[0].eid], v0 = s0 ? tempC(parseFloat(s0.state), s0.attributes && s0.attributes.unit_of_measurement) : NaN;
+                head += '<span class="gv" style="color:' + c.series[0].color + '">' + (isNaN(v0) ? '–' : v0.toFixed(c.dec)) + '<span class="unit">' + esc(c.unit) + '</span></span>';
+            }
+            return '<div class="scard gr" style="grid-column:span ' + c.span + ';grid-row:span 2">' + head + '</div>' + (chart || '<div class="gw">Loading history…</div>') + (multi ? legendHtml(c) : '') + '</div>';
+        }
+        if (c.t === 'status') {
+            var on = !dead && st.state !== 'off' && (c.eid.indexOf('climate.') !== 0 || (a.hvac_action ? a.hvac_action !== 'idle' && a.hvac_action !== 'off' : true));
+            var txt = dead ? '–' : c.eid.indexOf('climate.') === 0 ? (on ? cap(String(a.hvac_action || st.state).replace(/_/g, ' ')) : 'Off') : (on ? 'On' : 'Off');
+            var wt = a.current_temperature !== undefined && a.current_temperature !== null ? a.current_temperature : a.temperature;
+            if (!dead && c.eid.indexOf('water_heater.') === 0 && typeof wt === 'number') { txt += ' · ' + Math.round(tempC(wt, a.temperature_unit)) + '°'; }
+            return '<div class="scard st' + (on ? ' on' : '') + (dead ? ' dim' : '') + '" style="--c:' + c.color + '"><div class="ico">' + GLYPHS[c.icon] + '</div>' +
+                '<div class="val">' + esc(txt) + '</div><div class="name">' + esc(c.name) + '</div></div>';
+        }
+        var val = dead ? '–' : (Math.round(parseFloat(st.state) * 100) / 100).toFixed(c.dec);
+        return '<div class="scard' + (dead ? ' dim' : '') + '"><div class="val">' + esc(val) + '<span class="unit">' + esc(c.unit) + '</span></div><div class="name">' + esc(c.name) + '</div></div>';
+    }
+
     function renderHome(stale) {
-        var sensors = homeSensors(), html = '', anyKnown = false;
+        var sensors = homeSensors(), html = '', anyKnown = false, custom = homeCards();
+        each(custom, function (c) { if (ha.states[c.eid]) { anyKnown = true; } html += cardHtml(c); });
+        sensors = custom.length ? [] : sensors;
         var focusKey = tabFocus === null && page === P_HOME ? sel[0] : null;
         each(sensors, function (eid) {
             var f = formatState(eid);
@@ -2317,9 +2504,10 @@
                 '<div class="val">' + esc(f.value) + (f.unit === '°' ? '°' : (f.unit ? '<span class="unit">' + esc(f.unit) + '</span>' : '')) + '</div>' +
                 '<div class="name">' + esc(displayName(eid)) + (f.note ? ' <span class="note">' + esc(f.note) + '</span>' : '') + '</div></div>';
         });
+        $('sensors').className = custom.length ? 'custom' : '';
         if (html !== homeHtml) { homeHtml = html; $('sensors').innerHTML = html; }   // unchanged values: nothing redrawn
         var box = $('senBox');
-        box.hidden = !sensors.length || !anyKnown;
+        box.hidden = (!sensors.length && !custom.length) || !anyKnown;
         box.className = box.className.replace(/\s*stale/g, '') + (stale ? ' stale' : '');
         if (String(sel[0]).indexOf('sen:') === 0 && !sensorsFocusable()) { sel[0] = 'dock'; }
         scrollSensors();
@@ -5485,7 +5673,9 @@
     var dockSignature = '', dockSig0 = null;
     var installedApps = null;   // Tizen ApplicationInformation[] once listed
 
-    function dockApps() { return cfg.dockApps || ['youtube', 'internet']; }
+    function dockApps() { return cfg.dockApps || ['youtube', 'hdmi', 'com.samsung.tv.aria-video', 'internet']; }
+    function dockCams() { return cfg.homeCams === false ? [] : selectedOf('camera').slice(0, 3); }
+    function dockCount() { return dockApps().length + dockCams().length; }
 
     function installedInfo(id) {
         if (!installedApps) { return null; }
@@ -5509,15 +5699,17 @@
         scrollDock();
     }
 
-    // Keeps the focused tile in view when the dock is wider than the screen.
+    // Keeps the focused app in view when the app row is wider than the screen.
     function scrollDock() {
-        var dock = $('dock'), track = $('dockTrack');
-        if (!track || !tiles.length) { return; }
-        var dockW = dock.clientWidth, trackW = track.offsetWidth, x;
+        var dock = $('dock'), track = $('dockTrack'), row = track.querySelectorAll('.tile');
+        if (!row.length) { return; }
+        var dockW = dock.clientWidth, trackW = track.offsetWidth, x, f = focus - camCount();
         if (trackW <= dockW) {
             x = Math.round((dockW - trackW) / 2);
+        } else if (f < 0) {
+            x = 0;
         } else {
-            var t = tiles[Math.max(0, Math.min(focus, tiles.length - 1))];
+            var t = row[Math.max(0, Math.min(f, row.length - 1))];
             x = Math.round(dockW / 2 - (t.offsetLeft + t.offsetWidth / 2));
             x = Math.max(dockW - trackW, Math.min(0, x));
         }
@@ -5527,31 +5719,57 @@
     }
 
     // Your apps in order (Settings is the gear in the toolbar). Rebuilt only when that list changes.
+    function tileKey(t) { return t ? (t.getAttribute('data-app') || t.getAttribute('data-camera') || '') : ''; }
+    function isCamTile(t) { return !!t && /(^|\s)cam(\s|$)/.test(t.className); }
+    function camCount() { var n = 0; each(tiles, function (t) { if (isCamTile(t)) { n++; } }); return n; }
+    function tileCx(t) { var r = t.getBoundingClientRect(); return r.left + r.width / 2; }
+
+    // Nearest tile (by horizontal position) in the other row.
+    function dockNearest(camRow, from) {
+        var fx = tileCx(tiles[from]), best = from, bd = 1e9;
+        each(tiles, function (t, i) {
+            if (isCamTile(t) !== camRow) { return; }
+            var d = Math.abs(tileCx(t) - fx);
+            if (d < bd) { bd = d; best = i; }
+        });
+        return best;
+    }
+
+    // Two rows: cameras on top, your apps below. Rebuilt only when either list changes.
     function buildDock() {
-        var items = [];
+        var items = [], cams = [];
         each(dockApps(), function (entry) {
             var def = appDef(entry);
             items.push({ app: entry, label: def.name, glyph: def.glyph });
         });
+        each(dockCams(), function (eid) { cams.push({ camera: eid, label: displayName(eid) }); });
         var sig = cfg.icons + '|';
-        each(items, function (d) { sig += (d.app || d.action || d.camera) + '=' + d.label + ';'; });
+        each(items, function (d) { sig += d.app + '=' + d.label + ';'; });
+        each(cams, function (d) { sig += d.camera + '=' + d.label + ';'; });
         if (sig === dockSignature) { return; }
         dockSignature = sig;
-        var html = '';
-        each(items, function (d) {
-            var attr = d.app ? ' data-app="' + esc(d.app) + '"' : (d.camera ? ' data-camera="' + esc(d.camera) + '"' : ' data-action="' + d.action + '"');
+        var keepKey = tileKey(tiles[focus]);
+        var tileHtml = function (d) {
+            var attr = d.app ? ' data-app="' + esc(d.app) + '"' : ' data-camera="' + esc(d.camera) + '"';
             var face = d.glyph ? GLYPHS[d.glyph] : '<span class="glyph mono">' + esc(monogram(d.label)) + '</span>';
-            html += '<div class="tile big' + (d.camera ? ' cam' : '') + '"' + attr + '>' +
+            return '<div class="tile big' + (d.camera ? ' cam' : '') + '"' + attr + '>' +
                 '<div class="face">' + face + '</div><div class="label">' + esc(d.label) + '</div></div>';
-        });
+        };
+        var html = '', camHtml = '';
+        each(items, function (d) { html += tileHtml(d); });
+        each(cams, function (d) { camHtml += tileHtml(d); });
         $('dockTrack').innerHTML = html;
-        $('dock').className = items.length >= 5 ? 'compact' : '';
-        homeHtml = '';                                 // the sensor area changes size with the dock
-        if (dockSig0 !== (items.length > 0)) { dockSig0 = items.length > 0; renderHome(!ha.connected); applyFocus(); }
+        $('dockCams').innerHTML = camHtml;
+        $('dock').className = '';
+        homeHtml = '';
+        if (dockSig0 !== (items.length + cams.length > 0)) { dockSig0 = items.length + cams.length > 0; renderHome(!ha.connected); applyFocus(); }
         tiles = document.querySelectorAll('#dock .tile');
-        focus = Math.max(0, Math.min(focus, tiles.length - 1));
+        var next = -1;
+        each(tiles, function (t, i) { if (next < 0 && keepKey && tileKey(t) === keepKey) { next = i; } });
+        focus = next >= 0 ? next : Math.min(camCount(), Math.max(0, tiles.length - 1));
         renderDock();
         applyIcons();
+        refreshHomeCams();
     }
 
     function monogram(name) {
@@ -5568,6 +5786,92 @@
         if (!pic) { return null; }
         var u = /^https?:/i.test(pic) ? pic : info.url + pic;
         return u + (u.indexOf('?') >= 0 ? '&' : '?') + '_=' + Date.now();
+    }
+
+    // Home dock camera tiles: a fresh still every 5 s, only while Home is showing.
+    var homeCam = { timer: null, last: {}, loading: {} };
+
+    // Live video in the tiles: one muted <video> per camera (AVPlay has a single video plane, so
+    // it can't be used here). "homeLiveMax" caps how many play at once; failures fall back to stills.
+    var homeLive = {};   // eid -> { video, playing, failedAt }
+
+    function stopHomeLive(eid) {
+        each(eid ? [eid] : keys(homeLive), function (e) {
+            var h = homeLive[e];
+            if (!h) { return; }
+            h.token = (h.token || 0) + 1;
+            if (h.video) {
+                h.video.onplaying = h.video.onerror = null;
+                try { h.video.pause(); } catch (x) { /* not playing */ }
+                h.video.removeAttribute('src');
+                try { h.video.load(); } catch (x) { /* nothing loaded */ }
+                if (h.video.parentNode) { h.video.parentNode.removeChild(h.video); }
+            }
+            homeLive[e] = { failedAt: h.failedAt || 0, token: h.token };
+        });
+    }
+
+    function startHomeLive() {
+        var n = 0, max = H.get('homeLiveMax', 0), now = Date.now();
+        each(document.querySelectorAll('#dock .tile.cam'), function (el) {
+            var eid = el.getAttribute('data-camera'), h = homeLive[eid] || (homeLive[eid] = { token: 0, failedAt: 0 });
+            if (n++ >= max || h.video || h.starting || now - h.failedAt < 30000) { return; }
+            var tok = ++h.token;
+            h.starting = true;
+            var giveUp = function (why) {
+                if (tok !== h.token) { return; }
+                cam.lastError = 'Home tile ' + eid + ': ' + why;
+                h.failedAt = Date.now();
+                h.starting = false;
+                stopHomeLive(eid);
+            };
+            haSend('camera/stream', { entity_id: eid, format: 'hls' }, function (ok, res) {
+                if (tok !== h.token) { return; }
+                if (!ok || !res || !res.url) { giveUp('no stream'); return; }
+                var face = el.querySelector('.face');
+                if (!face) { giveUp('no tile'); return; }
+                var v = document.createElement('video');
+                v.muted = true;
+                v.setAttribute('muted', '');
+                v.setAttribute('playsinline', '');
+                v.onplaying = function () { if (tok === h.token) { h.playing = true; h.starting = false; } };
+                v.onerror = function () { giveUp('video error ' + (v.error ? v.error.code : '')); };
+                v.src = /^https?:/i.test(res.url) ? res.url : H.ha().url + res.url;
+                face.appendChild(v);
+                h.video = v;
+                var p = v.play();
+                if (p && p.then) { p.then(null, function (e) { if (!e || e.name !== 'AbortError') { giveUp('play refused'); } }); }
+                setTimeout(function () { if (tok === h.token && !h.playing) { giveUp('no picture in 20 s'); } }, 20000);
+            });
+        });
+    }
+
+    function refreshHomeCams() {
+        clearTimeout(homeCam.timer);
+        if (page !== P_HOME || mode !== 'dock' || document.hidden || !ha.connected) { stopHomeLive(); return; }
+        var now = Date.now();
+        if (!homeCam.hist || now - homeCam.hist >= 5000) {
+            homeCam.hist = now;
+            each(homeCards(), function (c) { if (c.t === 'line' || c.t === 'bars') { loadHistory(c); } });
+        }
+        startHomeLive();
+        each(document.querySelectorAll('#dock .tile.cam'), function (el) {
+            var eid = el.getAttribute('data-camera');
+            if ((homeLive[eid] && homeLive[eid].playing) || homeCam.loading[eid] || (homeCam.last[eid] && now - homeCam.last[eid] < 4750)) { return; }
+            var url = snapshotUrl(eid);
+            if (!url) { return; }
+            homeCam.loading[eid] = true;
+            var img = new Image();
+            img.onload = function () {
+                homeCam.loading[eid] = false;
+                homeCam.last[eid] = Date.now();
+                var face = el.querySelector('.face');
+                if (face) { face.style.backgroundImage = 'url("' + url + '")'; el.className += / live/.test(el.className) ? '' : ' live'; }
+            };
+            img.onerror = function () { homeCam.loading[eid] = false; homeCam.last[eid] = Date.now(); };
+            img.src = url;
+        });
+        homeCam.timer = setTimeout(refreshHomeCams, 1000);
     }
 
     // ------------------------------------------------------------------ camera player
@@ -5666,6 +5970,7 @@
     }
 
     function openCamera(eid) {
+        stopHomeLive();
         musHold('camera');
         stopCamPlayback();
         var tok = cam.token;
@@ -5754,7 +6059,7 @@
         mode = 'dock';
         scheduleWalls();
         applyFocus();
-        refreshCamStills();
+        refreshCamStills(); refreshHomeCams();
         updateFx();
         musUnhold('camera', true);
     }
@@ -5787,6 +6092,27 @@
         });
     }
 
+    // Same sequence AeroTizen uses: pick the HDMI source (named like a PS5, else the first with signal),
+    // select it on the main window, then open the TV viewer.
+    function openHdmi() {
+        var T = window.tizen;
+        if (!T || !T.systeminfo || !T.tvwindow) { toast('Preview mode: this would switch to HDMI', 4000); return; }
+        var bad = function (m) { toast(m || 'Could not switch to HDMI', 4000); };
+        T.systeminfo.getPropertyValue('VIDEOSOURCE', function (info) {
+            var all = [], pick = null;
+            each((info && info.connected) || [], function (v) { if (v.type === 'HDMI') { all.push({ s: v, c: true }); } });
+            each((info && info.disconnected) || [], function (v) { if (v.type === 'HDMI') { all.push({ s: v, c: false }); } });
+            each(all, function (o) { if (!pick && /ps ?5|playstation/i.test(o.s.editName || '')) { pick = o; } });
+            each(all, function (o) { if (!pick && o.c) { pick = o; } });
+            if (!pick) { bad('No HDMI device with a signal. Is the PS5 on?'); return; }
+            try {
+                T.tvwindow.setSource(pick.s, function () {
+                    H.apps.launch({ ids: ['org.tizen.tv-viewer'] }, function (ok) { if (!ok) { bad('Could not open the TV viewer'); } });
+                }, function (e) { bad('HDMI: ' + ((e && e.message) || 'source error')); }, 'MAIN');
+            } catch (e) { bad('HDMI: ' + (e && e.message)); }
+        }, function () { bad('Could not read the TV inputs'); });
+    }
+
     function activateTile(t) {
         t.className += ' pressed';
         setTimeout(function () { t.className = t.className.replace(/\s*pressed/g, ''); }, 160);
@@ -5794,6 +6120,7 @@
         cfg.focus = focus;
         save('focus');
         if (t.getAttribute('data-camera')) { openCamera(t.getAttribute('data-camera')); return; }
+        if (t.getAttribute('data-app') === 'hdmi') { openHdmi(); return; }
         var app = appDef(t.getAttribute('data-app'));
         H.apps.launch(app, function (ok, why) {
             if (ok) { return; }
@@ -6299,6 +6626,8 @@
             handled = onAppsKey(k);
         } else if (mode === 'screens') {
             handled = onScreensKey(k);
+        } else if (k === KEY.BLUE) {
+            H.apps.launch({ ids: ['com.samsung.tv.csfs'] }, function (ok) { if (!ok) { toast('Could not open Samsung Home'); } });
         } else if (k === KEY.YELLOW || k === KEY.Y) {
             if (mode === 'diag') { closeOverlays(); } else { openDiag(); }
         } else if (mode === 'dock') {
@@ -6341,7 +6670,7 @@
             wallTimer = null;
             updateFx();
         } else {
-            refreshCamStills();
+            refreshCamStills(); refreshHomeCams();
             tickClock();                                           // also restarts the effects
             if (Date.now() - haListAt > 5 * 60000) { refreshHaWalls(); }
             scheduleWalls();
@@ -6358,6 +6687,7 @@
         pagesUpdate();
         buildDock();
         H.registerKey('ColorF2Yellow');
+        H.registerKey('ColorF3Blue');
         H.registerKey('ChannelUp');
         H.registerKey('ChannelDown');
         each(['MediaPlayPause', 'MediaPlay', 'MediaPause', 'MediaStop', 'MediaFastForward', 'MediaRewind'], function (n) { H.registerKey(n); });

@@ -23,6 +23,8 @@
     <tizen:privilege name="http://tizen.org/privilege/application.launch"/>
     <!-- Colour keys on the remote (red = safe mode at startup, yellow = app list) -->
     <tizen:privilege name="http://tizen.org/privilege/tv.inputdevice"/>
+    <!-- Switch HDMI sources (the PS5 tile) -->
+    <tizen:privilege name="http://tizen.org/privilege/tv.window"/>
 
     <tizen:setting screen-orientation="landscape"
                    context-menu="disable"
